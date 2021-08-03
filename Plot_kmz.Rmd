@@ -1,0 +1,72 @@
+---
+title: "Plot GNSS data"
+author: "Merritt Harlan"
+date: "8/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sf)
+library(maptools)
+```
+
+## Upload KMZ files
+
+```{r kmz, message=TRUE, warning=TRUE}
+input_kmz = list.files(path = "KMZ_files")
+
+kml_files = list()
+kml_df = data.frame()
+for(i in 1:length(input_kmz)){
+  unzip(paste0('KMZ_files/', input_kmz[i]),)
+  file_id = substr(input_kmz[i], 1, 8)
+  file_df = data.frame()
+  kml_files[[i]] = read_sf(paste0(file_id, ".kml"))
+  kml_coords = data.frame(getKMLcoordinates(paste0(file_id, ".kml"))[[1]])
+  colnames(kml_coords) = c("longitude", "latitude", "elevation")
+  kml_coords$id = file_id
+  kml_df = rbind(kml_df, kml_coords)
+}
+
+head(kml_df)
+```
+
+## Plot GNSS Elevation Data
+
+```{r plot, echo=TRUE}
+#pdf(file = 'plots.pdf')
+for(i in unique(kml_df$id)){
+  subset_df = kml_df[kml_df$id== i,]
+  plot(subset_df$elevation, xlab = "Time", ylab = "Elevation (m)", main = i)
+  plot(subset_df$latitude, xlab = "Time", ylab = "Latitude", main = i)
+  plot(subset_df$longitude, xlab = "Time", ylab = "Longitude",main = i)
+}
+#dev.off()
+```
+
+## Export GNSS data as single points, using the last point (but this could be changed to median/mean if that is better?)
+
+```{r export GNSS, echo=TRUE}
+GNSS_points = data.frame()
+for(i in unique(kml_df$id)){
+  subset_df = kml_df[kml_df$id== i,]
+  GNSS_points = rbind(GNSS_points, subset_df[nrow(subset_df),])
+}
+
+head(GNSS_points)
+
+write.csv(GNSS_points, "GNSS_points.csv")
+
+```
+## Correct Total Station Data with GPS data
+Adapted from https://gist.github.com/troyhill/2c461cfaaeddf9dcf0fd
+
+```{r process, echo=TRUE}
+ts_data = read.csv("TS_Practice_8_1_2021.csv")
+head(ts_data)
+
+gnss_data = read.csv("GNSS_points.csv")
+head(gnss_data)
+
+```
