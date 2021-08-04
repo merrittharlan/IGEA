@@ -19,11 +19,11 @@ input_kmz = list.files(path = "KMZ_files")
 kml_files = list()
 kml_df = data.frame()
 for(i in 1:length(input_kmz)){
-  unzip(paste0('KMZ_files/', input_kmz[i]),)
+  unzip(paste0('KMZ_files/', input_kmz[i]), exdir = "KML_files")
   file_id = substr(input_kmz[i], 1, 8)
   file_df = data.frame()
-  kml_files[[i]] = read_sf(paste0(file_id, ".kml"))
-  kml_coords = data.frame(getKMLcoordinates(paste0(file_id, ".kml"))[[1]])
+  kml_files[[i]] = read_sf(paste0("KML_files/",file_id, ".kml"))
+  kml_coords = data.frame(getKMLcoordinates(paste0("KML_files/", file_id, ".kml"))[[1]])
   colnames(kml_coords) = c("longitude", "latitude", "elevation")
   kml_coords$id = file_id
   kml_df = rbind(kml_df, kml_coords)
@@ -59,14 +59,4 @@ head(GNSS_points)
 write.csv(GNSS_points, "GNSS_points.csv")
 
 ```
-## Correct Total Station Data with GPS data
-Adapted from https://gist.github.com/troyhill/2c461cfaaeddf9dcf0fd
 
-```{r process, echo=TRUE}
-ts_data = read.csv("TS_Practice_8_1_2021.csv")
-head(ts_data)
-
-gnss_data = read.csv("GNSS_points.csv")
-head(gnss_data)
-
-```
