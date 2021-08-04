@@ -230,7 +230,6 @@ newPoints <- coordConv(inputData = newPoints, transformMatrix = LatTransMat,
                        xyPoints = rawInput, 
                        colNames = c("Long", "Lat"))
 
-
 # export data
 write.csv(newPoints, file = "exportedData.csv")
 ```

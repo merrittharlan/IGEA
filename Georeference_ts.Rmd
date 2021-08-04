@@ -8,45 +8,48 @@ output: html_document
 ## Correct Total Station Data with GPS data
 Adapted from https://gist.github.com/troyhill/2c461cfaaeddf9dcf0fd
 
-```{r process, echo=TRUE}
+```{r input, echo=TRUE}
+library(dplyr)
 ts_data = read.csv("8_3_Total_Station_Points.csv")
 head(ts_data)
 
 etrex_data = read.csv("waypoints_03-AUG-21.csv")
+etrex_data = etrex_data %>% select(X, Y, ele, time, name)
 head(etrex_data)
 
+#Keep reference points as first three points known:
+merged_points = merge(ts_data, etrex_data, by.x = "Etrex.ID", by.y = "name")
+colnames(merged_points)[1] = "Code"
+knowns = merged_points[1:3,]
 ```
+
 
 ```{r functions, echo=TRUE}
 # this function generates a transform matrix:
 # If "unknownData" object doesn't have columns 
 # named "Code", "Ground.Northing..m." and "Ground.Easting..m.",
 # insert those column names as 'y.unk' and 'x.unk'
-genTransform <- function(knownData = knowns, y.col = "y", x.col = "x", 
-                         unknownData = SETpoints, y.unk = "Ground.Northing..m.", x.unk = "Ground.Easting..m.", 
+genTransform <- function(knownData = knowns, y.col = "Y", x.col = "X", 
+                         y.unk = "Northing..m.", x.unk = "Easting..m.", 
                          n = 3) {
   
-  # if user provides more than three points with known coordinates, 
-  # use the first three found in both datasets
-  tiePoints <- c(as.character(knownData$Code[knownData$Code %in% unknownData$Code])[1:n])
-
   # re-format to get the datasets in the same order
-  data <- knownData[knownData$Code %in% tiePoints, ]
+  data <- knownData
   data$fill.col <- 1
-  data$x.un <- data$y.un <- NA
-  for (i in 1:nrow(data)) {
-    data$y.un[i] <- unknownData[unknownData$Code %in% tiePoints[i], y.unk]
-    data$x.un[i] <- unknownData[unknownData$Code %in% tiePoints[i], x.unk]
-  }
-  print(noquote(c("Used the following control points: ", paste0(data$Code[1:n], collapse = ", "))))
+
+  #print(noquote(c("Used the following control points: ", paste0(data$Code[1:n], collapse = ", "))))
   # get known coordinates
-  k <- as.matrix(data[c(x.col, y.col, "fill.col")])
-  u <- as.matrix(data[c("x.un", "y.un", "fill.col")])
+  k <- as.matrix(data[,c(x.col, y.col, "fill.col"),])
+  u <- as.matrix(data[,c(x.unk, y.unk, "fill.col")])
   
   A <- t(solve(u, k)) # this matches matlab output 'A'
 }
 
+transMat = genTransform()
+print(transMat)
+
 ```
+
 
 ```{r functions2, echo=TRUE}
 # function to convert between coordinate systems
@@ -71,9 +74,89 @@ coordConv <- function (inputData, transformMatrix, xyPoints, colNames) {
     inputData[colNames[1]] <- outputTemp[1]
     inputData[colNames[2]] <- outputTemp[2]
   }
-  
   inputData
 }
 
+newPoints <- coordConv(inputData = merged_points, transformMatrix = transMat, 
+                       xyPoints = merged_points[,c("Easting..m.",
+                                                   "Northing..m.")], 
+                       colNames = c("Transformed_Lon", "Transformed_Lat"))
+
+write.csv(newPoints, "Aug_3_2021_TStest.csv")
+
+```
+
+
+```{r statistics, echo=TRUE}
+#find the average distance between points and plot
+library(geosphere)
+
+error_diff = vector()
+for(i in 1:nrow(newPoints)){
+  error_diff[i] = distm(newPoints[i,c("X", "Y")], 
+                        newPoints[i,c("Transformed_Lon","Transformed_Lat")], 
+                        fun =distHaversine)
+}
+
+plot(error_diff, xlab = "Point", ylab = "Error in Distance (m)", main = "Discrepancy in Total Station Location from Triangulation")
+
+```
+
+```{r optimization, echo=TRUE}
+#iterate over each unique combination of three points to find the smallest distance
+
+unique_combo = combn(nrow(merged_points),m = 3, simplify = FALSE)
+shorter_combo = unique_combo[seq(1, length(unique_combo), 10)]
+
+mean_error = vector()
+for(i in 1:length(shorter_combo)){
+  knowns = merged_points[c(unlist(shorter_combo[i])),]
+  transMat = genTransform()
+  temp = merged_points
+  newPoints <- coordConv(inputData = temp, transformMatrix = transMat, 
+                       xyPoints = temp[,c("Easting..m.",
+                                                   "Northing..m.")], 
+                       colNames = c("Transformed_Lon", "Transformed_Lat"))
+  error_diff = vector()
+  for(j in 1:nrow(newPoints)){
+    error_diff[j] = distm(newPoints[j,c("X", "Y")], 
+                        newPoints[j,c("Transformed_Lon","Transformed_Lat")], 
+                        fun =distHaversine)
+    
+  }
+  mean_error[i] = mean(error_diff)
+}
+
+summary(mean_error)
+```
+
+```{r plot best, echo=TRUE}
+#plot best
+knowns = merged_points[c(unlist(shorter_combo[which.min(mean_error)])),]
+transMat = genTransform()
+bestPoints = merged_points
+bestPoints <- coordConv(inputData = bestPoints, transformMatrix = transMat, 
+                       xyPoints = bestPoints[,c("Easting..m.",
+                                                   "Northing..m.")], 
+                       colNames = c("Transformed_Lon", "Transformed_Lat"))
+error_diff = vector()
+for(j in 1:nrow(newPoints)){
+  error_diff[j] = distm(newPoints[j,c("X", "Y")], 
+                        newPoints[j,c("Transformed_Lon","Transformed_Lat")], 
+                        fun =distHaversine)
+  }
+
+GNSS_points = bestPoints
+coordinates(GNSS_points) = ~X+Y
+
+TS_points = bestPoints
+coordinates(TS_points) = ~Transformed_Lon+Transformed_Lat
+
+refPoints = bestPoints[c(unlist(shorter_combo[which.min(mean_error)])),]
+coordinates(refPoints) = ~X+Y
+
+plot(GNSS_points, col = "black", pch = 19)
+plot(TS_points, col = "blue", pch =24, add = TRUE)
+plot(refPoints, col = "red", pch = 19, add = TRUE)
 ```
 
