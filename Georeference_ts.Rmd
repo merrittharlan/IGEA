@@ -132,6 +132,7 @@ summary(mean_error)
 
 ```{r plot best, echo=TRUE}
 #plot best
+library(sp)
 knowns = merged_points[c(unlist(shorter_combo[which.min(mean_error)])),]
 transMat = genTransform()
 bestPoints = merged_points
