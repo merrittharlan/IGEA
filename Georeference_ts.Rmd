@@ -147,8 +147,8 @@ for(j in 1:nrow(newPoints)){
                         fun =distHaversine)
   }
 
-GNSS_points = bestPoints
-coordinates(GNSS_points) = ~X+Y
+etrex_points = bestPoints
+coordinates(etrex_points) = ~X+Y
 
 TS_points = bestPoints
 coordinates(TS_points) = ~Transformed_Lon+Transformed_Lat
@@ -156,7 +156,7 @@ coordinates(TS_points) = ~Transformed_Lon+Transformed_Lat
 refPoints = bestPoints[c(unlist(shorter_combo[which.min(mean_error)])),]
 coordinates(refPoints) = ~X+Y
 
-plot(GNSS_points, col = "black", pch = 19)
+plot(etrex_points, col = "black", pch = 19)
 plot(TS_points, col = "blue", pch =24, add = TRUE)
 plot(refPoints, col = "red", pch = 19, add = TRUE)
 ```

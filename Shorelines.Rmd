@@ -1,0 +1,99 @@
+---
+title: "Shorelines"
+author: "Merritt Harlan"
+date: "8/26/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plotKML)
+library(dplyr)
+library(sp)
+```
+
+## Load notes
+
+```{r load}
+shoreline_metadata = read.csv("Shorelines/IGEA_shorelines.csv")
+head(shoreline_metadata)
+```
+
+## Stream 1
+
+```{r stream1}
+#Reach 1
+shoreline_metadata %>% filter(Stream == 1, Reach ==1, ID == "Track")
+S1_R1_LB_track = readGPX("Shorelines/Etrex/blue etrex/Track_2021-08-12 151719.gpx")$tracks[[1]][["2021-08-12 15:17:19"]]
+S1_R1_RB_track = readGPX("Shorelines/Etrex/orange umass/Track_2021-08-12 151724.gpx")$tracks[[1]][["2021-08-12 15:17:24"]]
+
+S1_R1_LB_wp = readGPX("Shorelines/Etrex/blue etrex/Waypoints_12-AUG-21.gpx")$waypoints
+S1_R1_RB_wp = readGPX("Shorelines/Etrex/orange umass/Waypoints_12-AUG-21.gpx")$waypoints
+
+shoreline_metadata %>% filter(Stream == 1, Reach ==1, ID == "Waypoint")
+S1_R1_LB_track_cropped = S1_R1_LB_track %>% filter(time > S1_R1_LB_wp[S1_R1_LB_wp$name == "055",4]) %>% filter(time < S1_R1_LB_wp[S1_R1_LB_wp$name == "064",4])
+
+S1_R1_RB_track_cropped = S1_R1_RB_track %>% filter(time > S1_R1_RB_wp[S1_R1_RB_wp$name == "1245",4]) %>% filter(time < S1_R1_RB_wp[S1_R1_RB_wp$name == "1254",4])
+
+S1_R1_comb = rbind(S1_R1_LB_track_cropped, rev(S1_R1_RB_track_cropped))[,c(1,2)]
+S1_R1_sp = SpatialPolygons(list(Polygons(list(Polygon(S1_R1_comb)),1)))
+plot(S1_R1_sp)
+
+#Reach 2
+
+#Reach 3
+
+```
+
+## Stream 2
+
+```{r stream2}
+summary(cars)
+```
+
+## Stream 3
+
+```{r stream3}
+summary(cars)
+```
+
+## Stream 4
+```{r stream4}
+summary(cars)
+```
+
+## Stream 5
+```{r stream5}
+summary(cars)
+```
+
+## Stream 6
+```{r stream6}
+summary(cars)
+```
+
+## Stream 7
+```{r stream7}
+summary(cars)
+```
+
+## Stream 8
+```{r stream8}
+summary(cars)
+```
+
+## Stream 9
+```{r stream9}
+summary(cars)
+```
+
+## Stream 11
+```{r stream11}
+summary(cars)
+```
+
+## Stream 12
+```{r stream12}
+summary(cars)
+```
+
